@@ -1,9 +1,9 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import Dynamodb from './storage/Dynamodb';
-import Ecs from './compute/ECS';
+import Ecs from './compute/Ecs';
 
-interface InfraStackProps extends cdk.StackProps{ 
+interface InfraStackProps extends cdk.StackProps {
   readonly prefix: string;
 }
 
@@ -11,7 +11,7 @@ export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: InfraStackProps) {
     super(scope, id, props);
 
-    if (!props || !props.prefix){
+    if (!props || !props.prefix) {
       throw new Error('props are required');
     }
 
@@ -37,6 +37,5 @@ export class InfraStack extends cdk.Stack {
       description: 'Repository URI',
       exportName: 'repositoryUri',
     });
-
   }
 }

@@ -18,5 +18,5 @@ new InfraStack(app, 'InfraStack', {
   env: { account: '058264545728', region: 'us-east-1' },
 
   /* For more information, see https://docs.aws.amazon.com/cdk/latest/guide/environments.html */
-  prefix: 'clcm3506'
+  prefix: 'clcm3506',
 });
