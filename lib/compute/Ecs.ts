@@ -16,6 +16,7 @@ export default class Ecs extends Construct {
   public readonly cluster: ecs.Cluster;
   public readonly loadBalancer: cdk.aws_elasticloadbalancingv2.NetworkLoadBalancer;
   public readonly taskDefinition: ecs.Ec2TaskDefinition;
+  public readonly service: ecs.Ec2Service;
 
   constructor(scope: Construct, id: string, props?: EcsProps) {
     super(scope, id);
@@ -88,6 +89,8 @@ export default class Ecs extends Construct {
 
     this.loadBalancer = loadBalancedEcsService.loadBalancer;
     this.loadBalancer.addSecurityGroup(loadBalancerSecurityGroup);
+
+    this.service = loadBalancedEcsService.service;
 
     loadBalancedEcsService.targetGroup.configureHealthCheck({
       interval: cdk.Duration.seconds(5),
