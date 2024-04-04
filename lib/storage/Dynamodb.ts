@@ -22,6 +22,7 @@ export default class Dynamodb extends Construct {
     // Create a dynamodb table
     this.patientsTable = new dynamodb.TableV2(this, 'patientsTable', {
       tableName: 'Patients',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billing: dynamodb.Billing.provisioned({
         readCapacity,
@@ -32,6 +33,7 @@ export default class Dynamodb extends Construct {
     // Create a dynamodb table
     this.recordsTable = new dynamodb.TableV2(this, 'recordsTable', {
       tableName: 'Records',
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'patientId', type: dynamodb.AttributeType.STRING },
       billing: dynamodb.Billing.provisioned({ readCapacity, writeCapacity }),

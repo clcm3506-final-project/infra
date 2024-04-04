@@ -28,6 +28,8 @@ export class InfraStack extends cdk.Stack {
     // create ECR repository
     const repository = new cdk.aws_ecr.Repository(this, 'backendRepository', {
       repositoryName: `${prefix}-backend`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      autoDeleteImages: true,
     });
 
     // create ECS cluster
