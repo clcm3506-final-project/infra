@@ -20,16 +20,20 @@ export default class Ecs extends Construct {
   constructor(scope: Construct, id: string, props?: EcsProps) {
     super(scope, id);
 
-    let { prefix, vpc, ec2InstanceType, desiredCapacity } = props || {};
+    if (!props || !props.prefix) {
+      throw new Error('props are required');
+    }
+
+    let { vpc, ec2InstanceType, desiredCapacity } = props;
+    const { prefix } = props;
 
     // if no props, set default values
     vpc = vpc || ec2.Vpc.fromLookup(this, 'Vpc', { isDefault: true });
     ec2InstanceType = ec2InstanceType || 't2.micro';
     desiredCapacity = desiredCapacity || 1;
-    prefix = prefix || 'myprefix';
 
     // Create an ECS cluster
-    const cluster = new ecs.Cluster(this, 'Cluster', { vpc });
+    const cluster = new ecs.Cluster(this, 'Cluster', { vpc, clusterName: `${prefix}-cluster` });
     this.cluster = cluster;
 
     // Add ec2 capacity to it
@@ -71,14 +75,13 @@ export default class Ecs extends Construct {
     );
 
     const loadBalancedEcsService = new ecsPatterns.NetworkLoadBalancedEc2Service(this, 'Service', {
+      serviceName: `${prefix}-backend-service`,
       cluster,
       memoryLimitMiB: 128,
       listenerPort: 80,
       healthCheckGracePeriod: cdk.Duration.seconds(5),
 
       publicLoadBalancer: true,
-      serviceName: 'backend',
-
       taskDefinition,
       desiredCount: 1,
     });
@@ -104,6 +107,18 @@ export default class Ecs extends Construct {
       value: this.loadBalancer.loadBalancerDnsName,
       description: 'Load balancer DNS',
       exportName: 'LoadBalancerDNS',
+    });
+
+    new cdk.CfnOutput(this, 'ClusterName', {
+      value: cluster.clusterName,
+      description: 'ECS cluster name',
+      exportName: 'ClusterName',
+    });
+
+    new cdk.CfnOutput(this, 'ServiceName', {
+      value: loadBalancedEcsService.service.serviceName,
+      description: 'ECS service name',
+      exportName: 'ServiceName',
     });
   }
 }

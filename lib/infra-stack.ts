@@ -17,19 +17,20 @@ export class InfraStack extends cdk.Stack {
 
     const { prefix } = props;
 
+    // create DynamoDB tables
     const tables = new Dynamodb(this, 'Dynamodb', { rcu: 2, wcu: 2 });
-
-    const cluster = new Ecs(this, 'backend', {
-      prefix,
-    });
-
-    tables.patientsTable.grantReadWriteData(cluster.taskDefinition.taskRole);
-    tables.recordsTable.grantReadWriteData(cluster.taskDefinition.taskRole);
 
     // create ECR repository
     const repository = new cdk.aws_ecr.Repository(this, 'backendRepository', {
       repositoryName: `${prefix}-backend`,
     });
+
+    // create ECS cluster
+    const cluster = new Ecs(this, 'backend', { prefix });
+
+    // grant the ECS task role to read/write data from the DynamoDB tables
+    tables.patientsTable.grantReadWriteData(cluster.taskDefinition.taskRole);
+    tables.recordsTable.grantReadWriteData(cluster.taskDefinition.taskRole);
 
     // output the repository uri
     new cdk.CfnOutput(this, 'repositoryUri', {
