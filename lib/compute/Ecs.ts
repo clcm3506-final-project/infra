@@ -142,6 +142,8 @@ export default class Ecs extends Construct {
       unhealthyThresholdCount: 5,
     });
 
+    loadBalancedEcsService.targetGroup.setAttribute('deregistration_delay.timeout_seconds', '5');
+
     cluster.connections.allowFrom(
       loadBalancerSecurityGroup,
       ec2.Port.allTcp(),
