@@ -3,6 +3,7 @@ import * as cdk from 'aws-cdk-lib';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as iam from 'aws-cdk-lib/aws-iam';
 import { Tags } from 'aws-cdk-lib';
 
 export interface EcsProps {
@@ -43,22 +44,59 @@ export default class Ecs extends Construct {
       desiredCapacity,
     });
 
-    const taskDefinition = new ecs.Ec2TaskDefinition(this, 'TaskDef');
-    this.taskDefinition = taskDefinition;
-
-    taskDefinition.addContainer('WebContainer', {
-      image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
-      memoryLimitMiB: 128,
-      portMappings: [{ containerPort: 80 }],
-      logging: new ecs.AwsLogDriver({ streamPrefix: prefix }),
+    // Create task execution role
+    const executionRole = new iam.Role(this, 'TaskExecutionRole', {
+      roleName: `${prefix}-task-execution-role`,
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
     });
 
-    taskDefinition.taskRole.addToPrincipalPolicy(
-      new cdk.aws_iam.PolicyStatement({
-        actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+    const loggingPolicy = new iam.PolicyStatement({
+      actions: ['logs:CreateLogGroup', 'logs:CreateLogStream', 'logs:PutLogEvents'],
+      resources: ['*'],
+    });
+
+    // Add permissions to the role
+    executionRole.addToPolicy(loggingPolicy);
+    executionRole.addToPolicy(
+      new iam.PolicyStatement({
+        actions: [
+          'ecr:GetAuthorizationToken',
+          'ecr:BatchCheckLayerAvailability',
+          'ecr:GetDownloadUrlForLayer',
+          'ecr:BatchGetImage',
+        ],
         resources: ['*'],
       }),
     );
+
+    // Create task role
+    const taskRole = new iam.Role(this, 'TaskRole', {
+      roleName: `${prefix}-task-role`,
+      assumedBy: new iam.ServicePrincipal('ecs-tasks.amazonaws.com'),
+    });
+
+    taskRole.addToPolicy(loggingPolicy);
+
+    const taskDefinition = new ecs.Ec2TaskDefinition(this, 'TaskDef', {
+      family: `${prefix}-task`,
+      executionRole,
+      taskRole,
+    });
+
+    this.taskDefinition = taskDefinition;
+
+    // create log group
+    const logGroup = new cdk.aws_logs.LogGroup(this, 'BackendLogGroup', {
+      logGroupName: `${prefix}-backend-logs`,
+      removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    taskDefinition.addContainer('backend', {
+      image: ecs.ContainerImage.fromRegistry('amazon/amazon-ecs-sample'),
+      memoryLimitMiB: 128,
+      portMappings: [{ containerPort: 80 }],
+      logging: new ecs.AwsLogDriver({ streamPrefix: prefix, logGroup }),
+    });
 
     // create a security group, allow inbound 80 from anywhere
     const loadBalancerSecurityGroup = new ec2.SecurityGroup(this, 'AllowTraffic', {

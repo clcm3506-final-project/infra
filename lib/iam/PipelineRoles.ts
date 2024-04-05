@@ -90,6 +90,33 @@ export default class PipelineRoles extends Construct {
       }),
     );
 
+    // add policy to allow 'ecs:DescribeTaskDefinition'
+    backendPipelineRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'DescribeTaskDefinition',
+        actions: ['ecs:DescribeTaskDefinition'],
+        resources: ['*'],
+      }),
+    );
+
+    // Add policy to allow push image to ECR
+    backendPipelineRole.addToPolicy(
+      new iam.PolicyStatement({
+        sid: 'PushImageToECR',
+        actions: [
+          'ecr:GetAuthorizationToken',
+          'ecr:BatchCheckLayerAvailability',
+          'ecr:GetDownloadUrlForLayer',
+          'ecr:BatchGetImage',
+          'ecr:InitiateLayerUpload',
+          'ecr:UploadLayerPart',
+          'ecr:CompleteLayerUpload',
+          'ecr:PutImage',
+        ],
+        resources: ['*'],
+      }),
+    );
+
     const frontendPipelineRole = new iam.Role(this, 'frontendPipelineRole', {
       assumedBy: new iam.FederatedPrincipal(
         githubProvider.openIdConnectProviderArn,
