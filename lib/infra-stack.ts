@@ -35,9 +35,12 @@ export class InfraStack extends cdk.Stack {
     // create ECS cluster
     const cluster = new Ecs(this, 'backend', { prefix });
 
+    // grant ecr pull permissions to the ECS task execution role
+    repository.grantPull(cluster.taskExecutionRole);
+
     // grant the ECS task role to read/write data from the DynamoDB tables
-    tables.patientsTable.grantReadWriteData(cluster.taskDefinition.taskRole);
-    tables.recordsTable.grantReadWriteData(cluster.taskDefinition.taskRole);
+    tables.patientsTable.grantReadWriteData(cluster.taskRole);
+    tables.recordsTable.grantReadWriteData(cluster.taskRole);
 
     // create s3 bucket to host static webiste
     const frontendBucket = new s3.Bucket(this, 'FrontendBucket', {

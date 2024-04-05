@@ -18,6 +18,8 @@ export default class Ecs extends Construct {
   public readonly loadBalancer: cdk.aws_elasticloadbalancingv2.NetworkLoadBalancer;
   public readonly taskDefinition: ecs.Ec2TaskDefinition;
   public readonly service: ecs.Ec2Service;
+  public readonly taskRole: iam.Role;
+  public readonly taskExecutionRole: iam.Role;
 
   constructor(scope: Construct, id: string, props?: EcsProps) {
     super(scope, id);
@@ -76,6 +78,9 @@ export default class Ecs extends Construct {
     });
 
     taskRole.addToPolicy(loggingPolicy);
+
+    this.taskRole = taskRole;
+    this.taskExecutionRole = executionRole;
 
     const taskDefinition = new ecs.Ec2TaskDefinition(this, 'TaskDef', {
       family: `${prefix}-task`,
