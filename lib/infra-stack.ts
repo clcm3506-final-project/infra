@@ -11,6 +11,7 @@ interface InfraStackProps extends cdk.StackProps {
   readonly backendRepoPath: string;
   readonly frontendRepoPath: string;
   readonly certificateArn: string;
+  readonly environment: string;
 }
 
 export class InfraStack extends cdk.Stack {
@@ -22,20 +23,21 @@ export class InfraStack extends cdk.Stack {
       !props.prefix ||
       !props.backendRepoPath ||
       !props.frontendRepoPath ||
-      !props.certificateArn
+      !props.certificateArn ||
+      !props.environment
     ) {
       throw new Error('props are required');
     }
 
-    const { prefix, frontendRepoPath, backendRepoPath, certificateArn } = props;
+    const { prefix, environment, frontendRepoPath, backendRepoPath, certificateArn } = props;
 
     // create DynamoDB tables
-    const tables = new Dynamodb(this, 'Dynamodb', { rcu: 2, wcu: 2 });
+    const tables = new Dynamodb(this, 'Dynamodb', { environment, rcu: 2, wcu: 2 });
 
     // create ECR repository
     const repository = new cdk.aws_ecr.Repository(this, 'backendRepository', {
       repositoryName: `${prefix}-backend`,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: environment === 'dev' ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
       autoDeleteImages: true,
     });
 

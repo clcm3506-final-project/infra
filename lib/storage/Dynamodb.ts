@@ -5,6 +5,7 @@ import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 export interface DynamodbProps {
   readonly rcu?: number;
   readonly wcu?: number;
+  readonly environment: string;
 }
 
 export default class Dynamodb extends Construct {
@@ -14,7 +15,7 @@ export default class Dynamodb extends Construct {
   constructor(scope: Construct, id: string, props?: DynamodbProps) {
     super(scope, id);
 
-    const { rcu, wcu } = props || {};
+    const { rcu, wcu, environment } = props || {};
 
     const readCapacity = dynamodb.Capacity.fixed(rcu || 2);
     const writeCapacity = dynamodb.Capacity.autoscaled({ maxCapacity: wcu || 2 });
@@ -22,7 +23,7 @@ export default class Dynamodb extends Construct {
     // Create a dynamodb table
     this.patientsTable = new dynamodb.TableV2(this, 'patientsTable', {
       tableName: 'Patients',
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: environment === 'dev' ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       billing: dynamodb.Billing.provisioned({
         readCapacity,
@@ -33,7 +34,7 @@ export default class Dynamodb extends Construct {
     // Create a dynamodb table
     this.recordsTable = new dynamodb.TableV2(this, 'recordsTable', {
       tableName: 'Records',
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: environment === 'dev' ? cdk.RemovalPolicy.DESTROY : cdk.RemovalPolicy.RETAIN,
       partitionKey: { name: 'id', type: dynamodb.AttributeType.STRING },
       sortKey: { name: 'patientId', type: dynamodb.AttributeType.STRING },
       billing: dynamodb.Billing.provisioned({ readCapacity, writeCapacity }),
