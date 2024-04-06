@@ -10,17 +10,24 @@ interface InfraStackProps extends cdk.StackProps {
   readonly prefix: string;
   readonly backendRepoPath: string;
   readonly frontendRepoPath: string;
+  readonly certificateArn: string;
 }
 
 export class InfraStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: InfraStackProps) {
     super(scope, id, props);
 
-    if (!props || !props.prefix || !props.backendRepoPath || !props.frontendRepoPath) {
+    if (
+      !props ||
+      !props.prefix ||
+      !props.backendRepoPath ||
+      !props.frontendRepoPath ||
+      !props.certificateArn
+    ) {
       throw new Error('props are required');
     }
 
-    const { prefix, frontendRepoPath, backendRepoPath } = props;
+    const { prefix, frontendRepoPath, backendRepoPath, certificateArn } = props;
 
     // create DynamoDB tables
     const tables = new Dynamodb(this, 'Dynamodb', { rcu: 2, wcu: 2 });
@@ -33,7 +40,7 @@ export class InfraStack extends cdk.Stack {
     });
 
     // create ECS cluster
-    const cluster = new Ecs(this, 'backend', { prefix });
+    const cluster = new Ecs(this, 'backend', { prefix, certificateArn });
 
     // grant ecr pull permissions to the ECS task execution role
     repository.grantPull(cluster.taskExecutionRole);

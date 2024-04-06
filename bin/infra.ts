@@ -11,6 +11,7 @@ new InfraStack(app, 'InfraStack', {
   prefix: 'clcm3506',
   backendRepoPath: 'clcm3506-final-project/backend',
   frontendRepoPath: 'clcm3506-final-project/frontend',
+  certificateArn: process.env.CERTIFICATE_ARN || '',
 });
 
 Tags.of(app).add('project', 'clcm3506');

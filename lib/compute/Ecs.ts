@@ -11,6 +11,7 @@ export interface EcsProps {
   readonly vpc?: ec2.IVpc;
   readonly ec2InstanceType?: string;
   readonly desiredCapacity?: number;
+  readonly certificateArn: string;
 }
 
 export default class Ecs extends Construct {
@@ -24,12 +25,19 @@ export default class Ecs extends Construct {
   constructor(scope: Construct, id: string, props?: EcsProps) {
     super(scope, id);
 
-    if (!props || !props.prefix) {
+    if (!props || !props.prefix || !props.certificateArn) {
       throw new Error('props are required');
     }
 
     let { vpc, ec2InstanceType, desiredCapacity } = props;
-    const { prefix } = props;
+    const { prefix, certificateArn } = props;
+
+    // import certificate
+    const certificate = cdk.aws_certificatemanager.Certificate.fromCertificateArn(
+      this,
+      'apiCertificate',
+      certificateArn,
+    );
 
     // if no props, set default values
     vpc = vpc || ec2.Vpc.fromLookup(this, 'Vpc', { isDefault: true });
@@ -118,6 +126,12 @@ export default class Ecs extends Construct {
       'allow HTTP traffic from anywhere',
     );
 
+    loadBalancerSecurityGroup.addIngressRule(
+      ec2.Peer.anyIpv4(),
+      ec2.Port.tcp(443),
+      'allow HTTPS traffic from anywhere',
+    );
+
     const loadBalancedEcsService = new ecsPatterns.NetworkLoadBalancedEc2Service(this, 'Service', {
       serviceName: `${prefix}-backend-service`,
       cluster,
@@ -132,6 +146,13 @@ export default class Ecs extends Construct {
 
     this.loadBalancer = loadBalancedEcsService.loadBalancer;
     this.loadBalancer.addSecurityGroup(loadBalancerSecurityGroup);
+
+    this.loadBalancer.addListener('HTTSListener', {
+      port: 443,
+      protocol: cdk.aws_elasticloadbalancingv2.Protocol.TLS,
+      certificates: [certificate],
+      defaultTargetGroups: [loadBalancedEcsService.targetGroup],
+    });
 
     this.service = loadBalancedEcsService.service;
 
