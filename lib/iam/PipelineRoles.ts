@@ -2,12 +2,10 @@ import { Construct } from 'constructs';
 import * as cdk from 'aws-cdk-lib';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as s3 from 'aws-cdk-lib/aws-s3';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
 
 interface PipelineRolesProps {
   readonly prefix: string;
-  readonly taskDefinition: ecs.Ec2TaskDefinition;
-  readonly ecsService: ecs.Ec2Service;
+  readonly deploymentPolicyStatements: iam.PolicyStatement[];
   readonly backendRepoPath: string;
   readonly frontendBucket: s3.Bucket;
   readonly frontendRepoPath: string;
@@ -25,8 +23,7 @@ export default class PipelineRoles extends Construct {
       !props.backendRepoPath ||
       !props.frontendBucket ||
       !props.frontendRepoPath ||
-      !props.taskDefinition ||
-      !props.ecsService
+      !props.deploymentPolicyStatements
     ) {
       throw new Error('props are required');
     }
@@ -36,8 +33,7 @@ export default class PipelineRoles extends Construct {
       backendRepoPath,
       frontendRepoPath,
       frontendBucket,
-      taskDefinition,
-      ecsService,
+      deploymentPolicyStatements,
     } = props;
 
     const githubProvider = new iam.OpenIdConnectProvider(this, 'gitHubProvider', {
@@ -63,59 +59,9 @@ export default class PipelineRoles extends Construct {
 
     this.backendPipelineRole = backendPipelineRole;
 
-    // Add policy to allow ECS task definition registration
-    backendPipelineRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'RegisterTaskDefinition',
-        actions: ['ecs:RegisterTaskDefinition'],
-        resources: ['*'],
-      }),
-    );
-
-    // Add policy to allow IAM roles to be passed to the task definition
-    backendPipelineRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'PassRolesInTaskDefinition',
-        actions: ['iam:PassRole'],
-        resources: [taskDefinition.taskRole.roleArn, taskDefinition.executionRole?.roleArn || ''],
-      }),
-    );
-
-    // Add policy to allow ECS service deployment
-    backendPipelineRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'DeployService',
-        actions: ['ecs:UpdateService', 'ecs:DescribeServices'],
-        resources: [ecsService.serviceArn],
-      }),
-    );
-
-    // add policy to allow 'ecs:DescribeTaskDefinition'
-    backendPipelineRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'DescribeTaskDefinition',
-        actions: ['ecs:DescribeTaskDefinition'],
-        resources: ['*'],
-      }),
-    );
-
-    // Add policy to allow push image to ECR
-    backendPipelineRole.addToPolicy(
-      new iam.PolicyStatement({
-        sid: 'PushImageToECR',
-        actions: [
-          'ecr:GetAuthorizationToken',
-          'ecr:BatchCheckLayerAvailability',
-          'ecr:GetDownloadUrlForLayer',
-          'ecr:BatchGetImage',
-          'ecr:InitiateLayerUpload',
-          'ecr:UploadLayerPart',
-          'ecr:CompleteLayerUpload',
-          'ecr:PutImage',
-        ],
-        resources: ['*'],
-      }),
-    );
+    deploymentPolicyStatements.forEach((statement) => {
+      backendPipelineRole.addToPolicy(statement);
+    });
 
     const frontendPipelineRole = new iam.Role(this, 'frontendPipelineRole', {
       assumedBy: new iam.FederatedPrincipal(

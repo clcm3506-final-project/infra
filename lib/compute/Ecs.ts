@@ -21,6 +21,7 @@ export default class Ecs extends Construct {
   public readonly service: ecs.Ec2Service;
   public readonly taskRole: iam.Role;
   public readonly taskExecutionRole: iam.Role;
+  public readonly deploymentPolicyStatements: iam.PolicyStatement[];
 
   constructor(scope: Construct, id: string, props?: EcsProps) {
     super(scope, id);
@@ -170,6 +171,43 @@ export default class Ecs extends Construct {
       ec2.Port.allTcp(),
       'Allow inbound HTTP traffic from load balancer',
     );
+
+    this.deploymentPolicyStatements = [
+      new iam.PolicyStatement({
+        sid: 'RegisterTaskDefinition',
+        actions: ['ecs:RegisterTaskDefinition'],
+        resources: ['*'],
+      }),
+      new iam.PolicyStatement({
+        sid: 'PassRolesInTaskDefinition',
+        actions: ['iam:PassRole'],
+        resources: [taskRole.roleArn, executionRole.roleArn],
+      }),
+      new iam.PolicyStatement({
+        sid: 'DeployService',
+        actions: ['ecs:UpdateService', 'ecs:DescribeServices'],
+        resources: [loadBalancedEcsService.service.serviceArn],
+      }),
+      new iam.PolicyStatement({
+        sid: 'DescribeTaskDefinition',
+        actions: ['ecs:DescribeTaskDefinition'],
+        resources: ['*'],
+      }),
+      new iam.PolicyStatement({
+        sid: 'PushImageToECR',
+        actions: [
+          'ecr:GetAuthorizationToken',
+          'ecr:BatchCheckLayerAvailability',
+          'ecr:GetDownloadUrlForLayer',
+          'ecr:BatchGetImage',
+          'ecr:InitiateLayerUpload',
+          'ecr:UploadLayerPart',
+          'ecr:CompleteLayerUpload',
+          'ecr:PutImage',
+        ],
+        resources: ['*'],
+      }),
+    ];
 
     // Output the DNS where you can access your service
     new cdk.CfnOutput(this, 'LoadBalancerDNS', {

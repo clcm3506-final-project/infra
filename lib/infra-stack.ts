@@ -5,6 +5,7 @@ import Ecs from './compute/Ecs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import PipelineRoles from './iam/PipelineRoles';
+import JenkinsInstance from './compute/Jenkins';
 
 interface InfraStackProps extends cdk.StackProps {
   readonly prefix: string;
@@ -78,11 +79,17 @@ export class InfraStack extends cdk.Stack {
     // create roles for the pipeline
     new PipelineRoles(this, 'PipelineRoles', {
       prefix,
-      taskDefinition: cluster.taskDefinition,
-      ecsService: cluster.service,
+      deploymentPolicyStatements: cluster.deploymentPolicyStatements,
       backendRepoPath,
       frontendBucket,
       frontendRepoPath,
+    });
+
+    new JenkinsInstance(this, 'Jenkins', {
+      prefix,
+      vpc: cdk.aws_ec2.Vpc.fromLookup(this, 'Vpc', { isDefault: true }),
+      keyPairName: 'ec2',
+      deploymentPolicyStatements: cluster.deploymentPolicyStatements,
     });
 
     // output the repository uri
