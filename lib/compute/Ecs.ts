@@ -190,7 +190,13 @@ export default class Ecs extends Construct {
       }),
       new iam.PolicyStatement({
         sid: 'DescribeTaskDefinition',
-        actions: ['ecs:DescribeTaskDefinition'],
+        actions: [
+          'ecs:DescribeTaskDefinition',
+          'ecs:ListTasks',
+          'ecs:DescribeTasks',
+          'ecs:DescribeContainerInstances',
+          'ec2:DescribeInstances',
+        ],
         resources: ['*'],
       }),
       new iam.PolicyStatement({

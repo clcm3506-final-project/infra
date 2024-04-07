@@ -75,10 +75,11 @@ dnf install java-17-amazon-corretto -y
 yum install jenkins -y
 systemctl enable jenkins
 systemctl start jenkins
-yum install -y docker git
+yum install -y docker git nmap
 systemctl enable docker
 systemctl start docker
-usermod -aG docker $USER
+usermod -aG docker ec2-user
+usermod -aG docker jenkins
 mkdir -p /var/lib/jenkins/.ssh
 ssh-keyscan -t ed25519 github.com >> /var/lib/jenkins/.ssh/known_hosts
 chown -R jenkins:jenkins /var/lib/jenkins/.ssh
