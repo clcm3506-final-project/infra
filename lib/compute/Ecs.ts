@@ -5,6 +5,9 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import { Tags } from 'aws-cdk-lib';
+import Lambda from '../utilities/Lambda';
+import * as destinations from 'aws-cdk-lib/aws-logs-destinations';
+import * as logs from 'aws-cdk-lib/aws-logs';
 
 export interface EcsProps {
   readonly prefix: string;
@@ -12,6 +15,7 @@ export interface EcsProps {
   readonly ec2InstanceType?: string;
   readonly desiredCapacity?: number;
   readonly certificateArn: string;
+  readonly slackWebhookUrl: string;
 }
 
 export default class Ecs extends Construct {
@@ -31,7 +35,7 @@ export default class Ecs extends Construct {
     }
 
     let { vpc, ec2InstanceType, desiredCapacity } = props;
-    const { prefix, certificateArn } = props;
+    const { prefix, certificateArn, slackWebhookUrl } = props;
 
     // import certificate
     const certificate = cdk.aws_certificatemanager.Certificate.fromCertificateArn(
@@ -99,10 +103,27 @@ export default class Ecs extends Construct {
 
     this.taskDefinition = taskDefinition;
 
+    // create Lambda function as subscription filter
+    const logsToSlackLambda = new Lambda(this, 'LogsToSlackLambda', {
+      prefix,
+      name: 'SlackNotificationLambda',
+      srcPath: 'lib/utilities/SlackNotificationLambda',
+    });
+
+    logsToSlackLambda.function.addEnvironment('SLACK_WEBHOOK_URL', slackWebhookUrl);
+
     // create log group
-    const logGroup = new cdk.aws_logs.LogGroup(this, 'BackendLogGroup', {
+    const logGroup = new logs.LogGroup(this, 'BackendLogGroup', {
       logGroupName: `${prefix}-backend-logs`,
       removalPolicy: cdk.RemovalPolicy.DESTROY,
+    });
+
+    // create subscription filter
+    new logs.SubscriptionFilter(this, 'Subscription', {
+      logGroup,
+      destination: new destinations.LambdaDestination(logsToSlackLambda.function),
+      filterPattern: logs.FilterPattern.anyTerm('error'),
+      filterName: 'ErrorFilter',
     });
 
     taskDefinition.addContainer('backend', {

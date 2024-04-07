@@ -13,6 +13,7 @@ interface InfraStackProps extends cdk.StackProps {
   readonly frontendRepoPath: string;
   readonly certificateArn: string;
   readonly environment: string;
+  readonly slackWebhookUrl: string;
 }
 
 export class InfraStack extends cdk.Stack {
@@ -30,7 +31,14 @@ export class InfraStack extends cdk.Stack {
       throw new Error('props are required');
     }
 
-    const { prefix, environment, frontendRepoPath, backendRepoPath, certificateArn } = props;
+    const {
+      prefix,
+      environment,
+      frontendRepoPath,
+      backendRepoPath,
+      certificateArn,
+      slackWebhookUrl,
+    } = props;
 
     // create DynamoDB tables
     const tables = new Dynamodb(this, 'Dynamodb', { environment, rcu: 2, wcu: 2 });
@@ -43,7 +51,7 @@ export class InfraStack extends cdk.Stack {
     });
 
     // create ECS cluster
-    const cluster = new Ecs(this, 'backend', { prefix, certificateArn });
+    const cluster = new Ecs(this, 'backend', { prefix, certificateArn, slackWebhookUrl });
 
     // grant ecr pull permissions to the ECS task execution role
     repository.grantPull(cluster.taskExecutionRole);
